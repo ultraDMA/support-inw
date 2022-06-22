@@ -1,0 +1,60 @@
+version: '2.4'
+services:
+  redis:
+    image: redis
+    restart: on-failure
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
+
+  supportapp:
+    restart: on-failure
+    build:
+      context: ../supportapp
+    ports:
+      - "8000:8000"
+    expose:
+      - "587"
+    command: bash -c "python3 ./source/manage.py makemigrations && python3 ./source/manage.py migrate && python3 ./source/manage.py runserver 0.0.0.0:8000"
+    #["python3", "./source/manage.py", "runserver", "0.0.0.0:8000"]
+    depends_on:
+      - db
+
+  worker:
+    restart: on-failure
+    build:
+      context: ../supportapp
+    command: [ "celery", "--workdir=./source", "-A", "drfsite", "worker"]
+    ports:
+      - "587:587"
+    expose:
+      - "587"
+    depends_on:
+      - db
+      - supportapp
+
+  db:
+    restart: on-failure
+    image: postgres:14.2
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgresql/data:/var/lib/postgresql/data
+
+  flower:
+    image: mher/flower
+    command: ['celery', '--broker=redis://redis:6379/', 'flower']
+    ports:
+      - "5555:5555"
+
+  supportapp_test:
+    build:
+      context: ../supportapp
+    command: bash -c "python3 ./source/manage.py makemigrations && python3 ./source/manage.py migrate && pytest source"
+    depends_on:
+      - db

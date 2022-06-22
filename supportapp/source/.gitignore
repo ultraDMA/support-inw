@@ -1,0 +1,7 @@
+/model_dir.txt
+/support/migrations/
+/tmp.py
+/dev.env
+/docker/
+/.pytest_cache/
+/.env

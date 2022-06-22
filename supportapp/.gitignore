@@ -1,0 +1,4 @@
+/docker/*
+/venv/*
+/docker/
+/.env
